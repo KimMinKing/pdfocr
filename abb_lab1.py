@@ -2444,6 +2444,7 @@ def main():
 
     positions: List[SplitPosition] = []   # 동시 추적 포지션 목록
     signal_counter: int = 0               # 누적 시그널 번호
+    last_alerted_side: Optional[str] = None  # 마지막으로 알람 보낸 방향
     prev_tf_data: Optional[dict] = None
 
     last_price_15m: Optional[float] = None
@@ -2621,19 +2622,17 @@ def main():
                         _tp_line = f"\nTP1: {fmt_price(decision.reversion_tp1_price)}  TP2: {fmt_price(decision.reversion_tp2_price)}"
                     elif decision.is_qpulse_bb:
                         _tp_line = f"\nTP1: {fmt_price(decision.qpulse_bb_middle)} (BB중심)"
-                    tg.send(
-                        f"[진입 #{sid}] {decision.side} | {decision.strategy}\n"
-                        f"가격: {fmt_price(entry_px)}  손절: {fmt_price(decision.stop_price)}"
-                        f"{_tp_line}\n"
-                        f"신뢰도: {decision.confidence_tier}  포지션: {len(positions)}/{MAX_CONCURRENT_SIGNALS}"
-                    )
+                    if decision.side != last_alerted_side:
+                        tg.send(
+                            f"[진입 #{sid}] {decision.side} | {decision.strategy}\n"
+                            f"가격: {fmt_price(entry_px)}  손절: {fmt_price(decision.stop_price)}"
+                            f"{_tp_line}\n"
+                            f"신뢰도: {decision.confidence_tier}  포지션: {len(positions)}/{MAX_CONCURRENT_SIGNALS}"
+                        )
+                        last_alerted_side = decision.side
                 else:
                     print(f"[{fmt_time()}] [시그널 #{sid} 스킵] 최대 포지션({MAX_CONCURRENT_SIGNALS}) 도달 "
                           f"| {decision.side} @ {fmt_price(last_price)} | {decision.strategy}")
-                    tg.send(
-                        f"[시그널 #{sid} 스킵] 최대 포지션 도달\n"
-                        f"{decision.side} @ {fmt_price(last_price)} | {decision.strategy}"
-                    )
             else:
                 if not SIGNAL_ONLY and not positions:
                     if (now - last_perf_print).total_seconds() >= 60:
@@ -2765,6 +2764,7 @@ def main():
                     )
 
                     positions.remove(pos)
+                    last_alerted_side = None  # 청산 후 방향 리셋 → 다음 동일 방향도 알람
                     last_perf_print = now
                 else:
                     print(f"[{fmt_time()}] [#{pos.signal_id} 부분청산] {exit_ratio:.0%} "
