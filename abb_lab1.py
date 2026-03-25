@@ -58,11 +58,11 @@ BYBIT_REST = "https://api.bybit.com"
 
 REFRESH_SEC = 20
 
-TIMEFRAMES = {"1m": "1", "15m": "15", "1h": "60", "4h": "240"}
+TIMEFRAMES = {"1m": "1", "5m": "5", "15m": "15", "1h": "60", "4h": "240"}
 CANDLES_LIMIT = 420
 
-CACHE_SECONDS = {"1m": 60, "15m": 180, "1h": 600, "4h": 1800}
-WEIGHTS = {"4h": 0.45, "1h": 0.35, "15m": 0.15, "1m": 0.05}
+CACHE_SECONDS = {"1m": 60, "5m": 90, "15m": 180, "1h": 600, "4h": 1800}
+WEIGHTS = {"4h": 0.40, "1h": 0.30, "15m": 0.13, "5m": 0.12, "1m": 0.05}
 
 # 횡보
 RANGE_ADX_THRESHOLD = 20
@@ -72,15 +72,15 @@ RANGE_RSI_OVERBOUGHT = 60
 RANGE_RSI_EXIT = 50
 
 # 손절 기본값
-STOP_ATR_MULT = 2.2
+STOP_ATR_MULT = 3.0
 
 # 가상매매
 START_BALANCE = 1000.0
-BASE_POSITION_RATIO = 0.8
+BASE_POSITION_RATIO = 0.63
 LEVERAGE = 1.0
 
 # 비용
-TAKER_FEE_RATE = 0.0006
+TAKER_FEE_RATE = 0.0005   # Binance 선물 표준 테이커 수수료 0.05%
 SLIPPAGE_BPS = 0.5
 TOTAL_COST_PCT = (TAKER_FEE_RATE * 2 + SLIPPAGE_BPS / 10000.0 * 2) * 100
 
@@ -131,6 +131,14 @@ TP_STAGE3_USE_TRAIL = True
 TREND_EXTEND_SYNC_MIN = 3
 TREND_EXTEND_ACCEL_MIN = 0.005
 
+# 추세 진입 필터 (v8 개선)
+TREND_MIN_SCORE = 2.0       # 모멘텀 폴백 최소 점수 (높을수록 선별적, 기존 1.0)
+TREND_MIN_ADX   = 22        # 추세 진입 최소 ADX — 이 미만이면 TREND 거부
+
+# 전략 활성화 스위치
+STRATEGY_ALLOW_TREND = False   # TREND 진입 허용 여부 (False = 비활성화)
+STRATEGY_ALLOW_RANGE = False   # RANGE 진입 허용 여부 (False = 비활성화)
+
 # 재진입 쿨다운
 REENTRY_COOLDOWN_SEC = 120
 REENTRY_SAME_DIR_COOLDOWN_SEC = 180
@@ -145,12 +153,12 @@ FEEDBACK_WINDOW = 10
 # 🆕 v7: 회귀 전략 설정
 # ============================================================
 # 이탈 감지 임계값
-REVERSION_DEVIATION_THRESHOLD = 0.08   # p_up이 0.5에서 ±0.08 이상 벗어나면 이탈 (완화)
+REVERSION_DEVIATION_THRESHOLD = 0.051  # p_up이 0.5에서 ±0.051 이상 벗어나면 이탈
 REVERSION_EXTREME_THRESHOLD = 0.15     # p_up이 0.5에서 ±0.15 이상이면 강한 이탈
 
 # 회귀 확인 조건
-REVERSION_CONFIRM_DELTA_P = 0.010     # delta_p가 회귀 방향으로 최소 이만큼 (완화)
-REVERSION_CONFIRM_CYCLES = 1          # 연속 N사이클 회귀 방향 delta_p (완화)
+REVERSION_CONFIRM_DELTA_P = 0.015     # delta_p가 회귀 방향으로 최소 이만큼
+REVERSION_CONFIRM_CYCLES = 2          # 연속 N사이클 회귀 방향 delta_p
 REVERSION_STRONG_CONFIRM_CYCLES = 2   # 강한 확인: 2사이클 연속 (완화)
 
 # 회귀 가속 확인
@@ -163,11 +171,11 @@ REVERSION_PAUSE_WINRATE = 55.0        # 일시 중단
 REVERSION_MIN_TRADES = 10             # 승률 계산 최소 거래 수
 
 # 회귀 익절 (보수적)
-REVERSION_TP1_RATIO = 0.50            # 1차 익절: 이탈 거리의 50% 회복
-REVERSION_TP2_RATIO = 0.80            # 2차 익절: 이탈 거리의 80% 회복
+REVERSION_TP1_RATIO = 0.55            # 1차 익절: 이탈 거리의 55% 회복
+REVERSION_TP2_RATIO = 0.85            # 2차 익절: 이탈 거리의 85% 회복
 
 # 회귀 손절 (이탈 극값 기반)
-REVERSION_SL_BUFFER_PCT = 0.08        # 이탈 극값에서 0.08% 바깥에 손절
+REVERSION_SL_BUFFER_PCT = 0.086       # 이탈 극값에서 버퍼 % 바깥에 손절
 
 SHOW_DEBUG = False
 SIGNAL_ONLY = True   # True: 시그널 발생 시에만 출력 (조용한 감시 모드)
@@ -189,11 +197,44 @@ QPULSE_EMA_LONG = 26
 QPULSE_MAX_LOOKBACK = 15     # EMA 교차 이전 Q-Pulse 탐색 범위 (캔들 수, 완화)
 
 # 손절/익절
-QPULSE_SL_ATR_MULT = 1.5    # 손절: ATR x 배수
+QPULSE_SL_ATR_MULT = 2.5    # 손절: ATR x 배수 (최적화: 1.9→2.8→2.5)
 # 1차 익절은 BB 중심선 도달 시 (SPLIT_EXIT_RATIOS[0] 비율)
 
 # 승률 관리
 QPULSE_MIN_TRADES = 5        # 승률 계산 최소 거래 수
+
+# [v8] QP-BB 진입 필터
+QPULSE_BB_BAND_EDGE_RATIO = 0.28  # BB 밴드 외곽 28% 영역에서만 진입
+QPULSE_BB_VOL_MULT        = 1.32  # 진입 시 거래량이 20봉 평균의 1.32배 이상이어야 함
+QPULSE_BB_RSI_LONG_MAX    = 36    # QPULSE_BB LONG 진입 최대 RSI (최적화: 42→38→36)
+QPULSE_BB_RSI_SHORT_MIN   = 65    # QPULSE_BB SHORT 진입 최소 RSI (최적화: 58→65)
+
+# ============================================================
+# [v8] Q-Pulse Armed 회귀 전략 설정
+# ============================================================
+# 멀티TF Q-Pulse 가중치 (4h 제외: 너무 느림)
+QPULSE_MTF_WEIGHTS = {"1h": 0.40, "15m": 0.30, "5m": 0.20, "1m": 0.10}
+
+# ARMED 진입 임계값
+QPULSE_MTF_ARMED_THRESHOLD  = 0.35   # 가중합 절대값 이 이상이면 ARMED
+QPULSE_MTF_MIN_EXTEND_PCT   = 0.10   # ARMED 후 가격이 이 % 이상 연장되어야 EXTENDED
+QPULSE_MTF_ARMED_EXPIRE_SEC = 300    # 5분 내 EXTENDED 미진입 시 만료
+
+# 회귀 확인
+QPULSE_MTF_CONFIRM_DELTA_P  = 0.013  # 회귀 방향 delta_p 최소값
+QPULSE_MTF_CONFIRM_CYCLES   = 1      # 연속 확인 사이클
+
+# 손절/익절
+QPULSE_MTF_SL_BUFFER_PCT    = 0.094  # 극값에서 손절 버퍼 %
+QPULSE_MTF_TP1_RATIO        = 0.48   # 1차 익절: 이탈거리 48% 회복
+QPULSE_MTF_TP2_RATIO        = 0.80   # 2차 익절: 이탈거리 80% 회복
+
+# 기본 신뢰도 (일반 회귀 0.50 대비 높음)
+QPULSE_MTF_BASE_CONFIDENCE  = 0.55
+
+# 승률 관리
+QPULSE_MTF_MIN_TRADES       = 8
+QPULSE_MTF_PAUSE_WINRATE    = 50.0
 
 
 # =========================
@@ -373,10 +414,14 @@ def classify_trend(df: pd.DataFrame) -> dict:
 
     score = int(round(np.clip(direction_score + strength_score + momentum_score, 0, 100)))
 
+    vol_val    = float(last["volume"]) if pd.notna(last["volume"]) else 0.0
+    vol_ma20   = float(df["volume"].rolling(20).mean().iloc[-1]) if len(df) >= 20 else vol_val
+
     return {
         "label": label, "score": score, "close": float(last["close"]),
         "adx14": adx_val, "rsi14": rsi_val, "atr14": atr_val,
         "bb_upper": bb_u, "bb_middle": bb_m, "bb_lower": bb_l,
+        "volume": vol_val, "vol_ma20": vol_ma20,
         "time": last["dt"].to_pydatetime(),
         # [lab1 융합] Q-Pulse 데이터
         "ema19": ema19_val, "ema40": ema40_val,
@@ -391,6 +436,19 @@ def combine_timeframes(tf: dict) -> dict:
     p_up_base = float(np.clip(trend_score / 100.0, 0.0, 1.0))
     is_ranging = tf["15m"]["adx14"] < RANGE_ADX_THRESHOLD
     return {"trend_score": trend_score, "p_up_base": p_up_base, "is_ranging": is_ranging}
+
+
+def calc_qpulse_multitf_score(tf: dict) -> float:
+    """
+    1m/5m/15m/1h 각 TF의 Q-Pulse 값을 가중합하여 멀티TF 방향 강도 반환.
+    양수 = 강한 상승 펄스, 음수 = 강한 하락 펄스.
+    절대값이 QPULSE_MTF_ARMED_THRESHOLD 이상이면 ARMED 조건 충족.
+    """
+    score = 0.0
+    for tf_key, weight in QPULSE_MTF_WEIGHTS.items():
+        if tf_key in tf and "qpulse" in tf[tf_key]:
+            score += tf[tf_key]["qpulse"] * weight
+    return float(score)
 
 
 # =========================
@@ -1340,51 +1398,32 @@ class QpulseSetupTracker:
         has_bull = 1  in recent
         has_bear = -1 in recent
 
-        # ── 추세 추종 신호: EMA 교차 + Q-Pulse 확인 → 즉시 같은 방향 진입 ──
-        if cross_up and has_bull:
-            self.state = 'WAIT_BBU'   # 역추세 대기도 병행 설정
-            self.total_signals += 1
-            return {
-                "side": "LONG",
-                "signal_type": "trend",
-                "bb_middle": bb_middle,
-                "reason": f"[QPulse-Trend] EMA 상향교차 + Bull Pulse -> LONG",
-            }
-        if cross_down and has_bear:
-            self.state = 'WAIT_BBL'   # 역추세 대기도 병행 설정
-            self.total_signals += 1
-            return {
-                "side": "SHORT",
-                "signal_type": "trend",
-                "bb_middle": bb_middle,
-                "reason": f"[QPulse-Trend] EMA 하향교차 + Bear Pulse -> SHORT",
-            }
-        # Q-Pulse 없는 교차는 역추세 대기 상태만 설정 (즉시 진입 X)
+        # EMA 교차 시 역추세 대기 상태 설정 (즉시 진입 X — 추세 신호 제거)
         if cross_up:
             self.state = 'WAIT_BBU'
         elif cross_down:
             self.state = 'WAIT_BBL'
 
-        # ── 역추세 신호: Setup 후 BB 근접/돌파 → 반대 방향 진입 ──
-        if self.state == 'WAIT_BBU' and close >= bb_upper * 0.998:
+        # ── 역추세 신호: Setup 후 BB 실제 돌파 → 반대 방향 진입 ──
+        if self.state == 'WAIT_BBU' and close >= bb_upper:
             self.state = None
             self.total_signals += 1
             return {
                 "side": "SHORT",
                 "signal_type": "reversal",
-                "bb_middle": bb_middle,
+                "bb_upper": bb_upper, "bb_middle": bb_middle, "bb_lower": bb_lower,
                 "reason": (
                     f"[QPulse-Rev] Long Setup + Close({close:,.1f}) >= "
                     f"BB상단({bb_upper:,.1f}) -> SHORT"
                 ),
             }
-        if self.state == 'WAIT_BBL' and close <= bb_lower * 1.002:
+        if self.state == 'WAIT_BBL' and close <= bb_lower:
             self.state = None
             self.total_signals += 1
             return {
                 "side": "LONG",
                 "signal_type": "reversal",
-                "bb_middle": bb_middle,
+                "bb_upper": bb_upper, "bb_middle": bb_middle, "bb_lower": bb_lower,
                 "reason": (
                     f"[QPulse-Rev] Short Setup + Close({close:,.1f}) <= "
                     f"BB하단({bb_lower:,.1f}) -> LONG"
@@ -1406,6 +1445,207 @@ class QpulseSetupTracker:
         state_str = self.state if self.state else "대기"
         wr_str = f"{wr:.0f}%" if wr is not None else "N/A"
         return f"QPulse[{state_str} WR={wr_str}({self.total_signals}건)]"
+
+
+# ============================================================
+# [v8] Q-Pulse Armed 회귀 트래커
+# ============================================================
+@dataclass
+class QPulseArmedReversionTracker:
+    """
+    멀티TF Q-Pulse 신호를 게이트로 사용하는 강화된 회귀 전략.
+
+    흐름:
+    IDLE
+      → 멀티TF Q-Pulse 가중합 임계값 초과
+    ARMED (side=진입방향, armed_price=기준가 기록)
+      → 가격이 Q-Pulse 방향으로 MIN_EXTEND_PCT% 이상 추가 진행
+    EXTENDED (peak_price 확정)
+      → delta_p 반전 + CONFIRM_CYCLES 연속 확인
+    신호 반환 → MeanReversionTracker와 동일 포맷
+               단, confidence 부스트 + 손절/익절은 극값 기반
+
+    핵심 차이점:
+    - 일반 회귀: p_up 수학적 이탈 기반
+    - QPulse 회귀: 실제 강한 방향성 캔들(멀티TF 합의) 후 되돌림 기반
+    """
+    state: str = "IDLE"              # IDLE / ARMED / EXTENDED
+    armed_side: str = ""             # "LONG"(아래서 복귀) / "SHORT"(위에서 복귀)
+    armed_price: float = 0.0         # ARMED 전환 시점 가격
+    armed_time: Optional[datetime] = None
+    armed_qscore: float = 0.0        # ARMED 시점 Q-Pulse 스코어 강도
+
+    peak_price: float = 0.0          # 가격 극값 (손절 기준)
+    reversion_confirm_count: int = 0
+
+    # 승률 추적
+    wins: int = 0
+    losses: int = 0
+    total: int = 0
+    recent_results: deque = field(default_factory=lambda: deque(maxlen=30))
+    is_paused: bool = False
+
+    def update(self, qpulse_score: float, price: float, delta_p: float,
+               now: datetime) -> Optional[dict]:
+        """
+        매 사이클 호출. 진입 가능한 신호가 있으면 dict 반환.
+        """
+        self._check_pause()
+
+        # === IDLE: ARMED 조건 체크 ===
+        if self.state == "IDLE":
+            abs_score = abs(qpulse_score)
+            if abs_score >= QPULSE_MTF_ARMED_THRESHOLD:
+                # Q-Pulse 강한 상승 → 나중에 SHORT 회귀 노림
+                # Q-Pulse 강한 하락 → 나중에 LONG 회귀 노림
+                self.armed_side = "SHORT" if qpulse_score > 0 else "LONG"
+                self.armed_price = price
+                self.armed_time = now
+                self.armed_qscore = qpulse_score
+                self.peak_price = price
+                self.reversion_confirm_count = 0
+                self.state = "ARMED"
+            return None
+
+        # === 만료 체크 ===
+        if self.state in ("ARMED", "EXTENDED") and self.armed_time is not None:
+            elapsed = (now - self.armed_time).total_seconds()
+            if elapsed > QPULSE_MTF_ARMED_EXPIRE_SEC:
+                self.state = "IDLE"
+                return None
+
+        # === ARMED: 가격 연장 감지 ===
+        if self.state == "ARMED":
+            # 새 Q-Pulse 강도가 더 세지면 armed_price 갱신 (더 최신 기준점)
+            abs_score = abs(qpulse_score)
+            if abs_score >= QPULSE_MTF_ARMED_THRESHOLD:
+                new_side = "SHORT" if qpulse_score > 0 else "LONG"
+                if new_side == self.armed_side:
+                    self.armed_price = price
+                    self.armed_time = now
+                    self.armed_qscore = qpulse_score
+
+            # 가격 극값 추적
+            if self.armed_side == "SHORT":
+                # 상승 펄스 → 가격이 더 올라가면 peak 갱신
+                if price > self.peak_price:
+                    self.peak_price = price
+                # 연장 확인: peak가 armed_price 대비 MIN_EXTEND_PCT% 이상 올라감
+                extend_pct = (self.peak_price - self.armed_price) / self.armed_price * 100
+            else:
+                # 하락 펄스 → 가격이 더 내려가면 peak 갱신
+                if price < self.peak_price or self.peak_price == self.armed_price:
+                    self.peak_price = price
+                extend_pct = (self.armed_price - self.peak_price) / self.armed_price * 100
+
+            if extend_pct >= QPULSE_MTF_MIN_EXTEND_PCT:
+                self.state = "EXTENDED"
+                self.reversion_confirm_count = 0
+
+            return None
+
+        # === EXTENDED: 회귀 방향 delta_p 확인 ===
+        if self.state == "EXTENDED":
+            # 극값 계속 추적
+            if self.armed_side == "SHORT" and price > self.peak_price:
+                self.peak_price = price
+                self.reversion_confirm_count = 0
+            elif self.armed_side == "LONG" and (price < self.peak_price or self.peak_price == 0):
+                self.peak_price = price
+                self.reversion_confirm_count = 0
+
+            # 회귀 방향 delta_p 체크
+            reverting = False
+            if self.armed_side == "SHORT" and delta_p <= -QPULSE_MTF_CONFIRM_DELTA_P:
+                reverting = True
+            elif self.armed_side == "LONG" and delta_p >= QPULSE_MTF_CONFIRM_DELTA_P:
+                reverting = True
+
+            if reverting:
+                self.reversion_confirm_count += 1
+            else:
+                self.reversion_confirm_count = max(0, self.reversion_confirm_count - 1)
+
+            if self.reversion_confirm_count >= QPULSE_MTF_CONFIRM_CYCLES and not self.is_paused:
+                signal = self._build_signal(price)
+                self.state = "IDLE"
+                return signal
+
+        return None
+
+    def _build_signal(self, price: float) -> dict:
+        side = self.armed_side
+        # 손절: 극값 바깥 버퍼
+        if side == "LONG":
+            stop_price = self.peak_price * (1 - QPULSE_MTF_SL_BUFFER_PCT / 100)
+            dev_dist = abs(price - self.peak_price)
+            tp1_price = price + dev_dist * QPULSE_MTF_TP1_RATIO
+            tp2_price = price + dev_dist * QPULSE_MTF_TP2_RATIO
+        else:
+            stop_price = self.peak_price * (1 + QPULSE_MTF_SL_BUFFER_PCT / 100)
+            dev_dist = abs(self.peak_price - price)
+            tp1_price = price - dev_dist * QPULSE_MTF_TP1_RATIO
+            tp2_price = price - dev_dist * QPULSE_MTF_TP2_RATIO
+
+        # 신뢰도: Q-Pulse 스코어 강도 + 연장 거리로 부스트
+        extend_pct = dev_dist / max(self.armed_price, 1) * 100
+        confidence = QPULSE_MTF_BASE_CONFIDENCE
+        confidence += min(abs(self.armed_qscore) / 1.0, 0.15)   # 스코어 강도 보너스
+        confidence += min(extend_pct / 0.5, 0.10)               # 연장 거리 보너스
+        confidence = min(confidence, 1.0)
+
+        return {
+            "side": side,
+            "confidence": confidence,
+            "stop_price": stop_price,
+            "tp1_price": tp1_price,
+            "tp2_price": tp2_price,
+            "deviation_peak_price": self.peak_price,
+            "armed_qscore": self.armed_qscore,
+            "confirm_cycles": self.reversion_confirm_count,
+            "reason": (
+                f"[QPulse-Armed 회귀] {side} | "
+                f"멀티TF Q-Score={self.armed_qscore:+.2f} "
+                f"극값={self.peak_price:,.1f} "
+                f"연장={extend_pct:.2f}% "
+                f"신뢰={confidence:.2f}"
+            ),
+        }
+
+    def record_trade_result(self, win: bool):
+        self.total += 1
+        if win:
+            self.wins += 1
+        else:
+            self.losses += 1
+        self.recent_results.append(win)
+
+    def get_winrate(self) -> Optional[float]:
+        if self.total < QPULSE_MTF_MIN_TRADES:
+            return None
+        if len(self.recent_results) >= QPULSE_MTF_MIN_TRADES:
+            recent = list(self.recent_results)
+            return sum(1 for w in recent if w) / len(recent) * 100
+        return self.wins / self.total * 100 if self.total > 0 else None
+
+    def _check_pause(self):
+        wr = self.get_winrate()
+        if wr is None:
+            self.is_paused = False
+            return
+        if wr < QPULSE_MTF_PAUSE_WINRATE:
+            self.is_paused = True
+        elif wr >= QPULSE_MTF_PAUSE_WINRATE + 10:
+            self.is_paused = False
+
+    def get_status(self) -> str:
+        wr = self.get_winrate()
+        wr_str = f"{wr:.0f}%" if wr is not None else "N/A"
+        pause_str = " ⛔중단" if self.is_paused else ""
+        return (
+            f"QP-Armed[{self.state} side={self.armed_side or '-'} "
+            f"WR={wr_str}({self.total}건){pause_str}]"
+        )
 
 
 # ============================================================
@@ -1583,6 +1823,11 @@ class SplitPosition:
     # [lab1 융합] Q-Pulse BB 역추세 메타데이터
     qpulse_bb_middle: float = 0.0                # BB 중심선 (1차 익절 목표)
 
+    # [v8] Q-Pulse Armed 회귀 메타데이터
+    qp_armed_peak_price: float = 0.0             # 극값 가격 (손절 기준)
+    qp_armed_tp1_price: float = 0.0              # 1차 익절
+    qp_armed_tp2_price: float = 0.0              # 2차 익절
+
     def add_entry(self, price: float, qty: float, time: datetime, fees: float):
         self.entries.append(SplitEntry(price=price, qty=qty, time=time, fees=fees))
         self.total_fees += fees
@@ -1678,16 +1923,18 @@ class Performance:
     short_pnl: float = 0.0
     trend_pnl: float = 0.0
     range_pnl: float = 0.0
-    reversion_pnl: float = 0.0  # v7: 회귀 전략 PnL
-    qpulse_pnl: float = 0.0    # [lab1 융합] Q-Pulse BB 전략 PnL
+    reversion_pnl: float = 0.0      # v7: 회귀 전략 PnL
+    qpulse_pnl: float = 0.0        # [lab1 융합] Q-Pulse BB 전략 PnL
+    qp_armed_rev_pnl: float = 0.0  # [v8] Q-Pulse Armed 회귀 PnL
 
     trades: int = 0
     long_trades: int = 0
     short_trades: int = 0
     trend_trades: int = 0
     range_trades: int = 0
-    reversion_trades: int = 0  # v7
-    qpulse_trades: int = 0     # [lab1 융합]
+    reversion_trades: int = 0       # v7
+    qpulse_trades: int = 0          # [lab1 융합]
+    qp_armed_rev_trades: int = 0    # [v8]
 
     stoplosses: int = 0
     consecutive_losses: int = 0
@@ -1802,6 +2049,12 @@ class EntryDecision:
     is_qpulse_bb: bool = False
     qpulse_bb_middle: float = 0.0
 
+    # [v8] Q-Pulse Armed 회귀 메타데이터
+    is_qp_armed_rev: bool = False
+    qp_armed_peak_price: float = 0.0
+    qp_armed_tp1_price: float = 0.0
+    qp_armed_tp2_price: float = 0.0
+
 
 def _dynamic_stop_mult(atr_val: float, avg_atr: float, base_mult: float) -> float:
     if avg_atr == 0:
@@ -1821,8 +2074,10 @@ def decide_entry(
     perf: Performance,
     feedback: PerformanceFeedback,
     reversion_tracker: MeanReversionTracker,
-    qpulse_tracker: "QpulseSetupTracker",   # [lab1 융합]
-    qpulse_signal: Optional[dict],           # [lab1 융합] 이번 사이클 Q-Pulse 신호
+    qpulse_tracker: "QpulseSetupTracker",
+    qpulse_signal: Optional[dict],
+    qp_armed_tracker: "QPulseArmedReversionTracker",  # [v8]
+    qp_armed_signal: Optional[dict],                  # [v8] 이번 사이클 Armed 신호
     now: datetime,
     last_price: float,
     atr15: float,
@@ -1832,12 +2087,13 @@ def decide_entry(
     last_exit_side: Optional[str] = None,
 ) -> EntryDecision:
     """
-    v7: 회귀 전략 통합 진입 엔진.
+    v8: Q-Pulse Armed 회귀 전략 통합 진입 엔진.
 
     진입 우선순위:
-    1. 회귀 신호 (이탈 후 되돌아올 때) — 최우선
-    2. 커널 통계 + 회귀 필터 (ESS ≥ 8)
-    3. 모멘텀 + 회귀 필터 (ESS < 8)
+    1. Q-Pulse Armed 회귀 (멀티TF 펄스 후 되돌림) — 최우선
+    2. 일반 회귀 + QPULSE BB 융합/단독
+    3. 커널 통계 + 회귀 필터 (ESS >= 8)
+    4. 모멘텀 + 회귀 필터 (ESS < 8)
     """
 
     decision = EntryDecision()
@@ -1865,6 +2121,49 @@ def decide_entry(
         base_kelly = kelly_criterion(perf.winrate(), perf.avg_win_loss_ratio(), BASE_POSITION_RATIO)
     else:
         base_kelly = BASE_POSITION_RATIO * 0.7
+
+    # =========================================
+    # [v8] Q-Pulse Armed 회귀 — 최우선 처리
+    # =========================================
+    qp_armed = qp_armed_signal
+    if qp_armed is not None and last_exit_time is not None:
+        elapsed_qa = (now - last_exit_time).total_seconds()
+        side_qa = qp_armed["side"]
+        if (last_exit_side == side_qa and elapsed_qa < REENTRY_SAME_DIR_COOLDOWN_SEC) \
+                or elapsed_qa < REENTRY_COOLDOWN_SEC:
+            qp_armed = None
+
+    if qp_armed is not None:
+        side = qp_armed["side"]
+        conf = qp_armed["confidence"]
+        # 반대 방향으로 강한 커널 엣지가 있으면 취소
+        scan_qa = stat_analyzer.scan_opportunity(p_up=p_up, delta_p=delta_p, accel=accel,
+                                                  sync_score=sync_score, now=now)
+        opp_edge_qa = scan_qa["short_edge"] if side == "LONG" else scan_qa["long_edge"]
+        if opp_edge_qa > TOTAL_COST_PCT * 4 and scan_qa["ess"] >= 15:
+            qp_armed = None  # 강한 반대 엣지 → 취소
+
+    if qp_armed is not None:
+        side = qp_armed["side"]
+        conf = qp_armed["confidence"]
+        pos_ratio = base_kelly * aggression_mult * conf * SPLIT_ENTRY_RATIOS[0] * 1.6
+        pos_ratio = float(np.clip(pos_ratio, 0.05, 0.9))
+        stop_dist_pct = abs(last_price - qp_armed["stop_price"]) / last_price * 100
+        tier = "high" if conf >= 0.8 else "medium"
+        decision.should_enter = True
+        decision.side = side
+        decision.strategy = "QPULSE_REVERSION"
+        decision.position_ratio = pos_ratio
+        decision.stop_price = qp_armed["stop_price"]
+        decision.confidence_tier = tier
+        decision.sync_score = sync_score
+        decision.is_qp_armed_rev = True
+        decision.qp_armed_peak_price = qp_armed["deviation_peak_price"]
+        decision.qp_armed_tp1_price = qp_armed["tp1_price"]
+        decision.qp_armed_tp2_price = qp_armed["tp2_price"]
+        decision.tp_target_pct = stop_dist_pct * 2.5
+        decision.reason = qp_armed["reason"] + f" | {aggression_label}"
+        return decision
 
     # =========================================
     # REVERSION + QPULSE 융합 진입 엔진
@@ -1963,6 +2262,31 @@ def decide_entry(
         # ── QPULSE 단독 ──
         if has_qp:
             side = qp_valid["side"]
+
+            # [v8] 필터 1: BB 밴드 위치 — 외곽 EDGE_RATIO 영역에서만 허용
+            bb_u_qp = qp_valid.get("bb_upper", 0.0)
+            bb_l_qp = qp_valid.get("bb_lower", 0.0)
+            bb_width = bb_u_qp - bb_l_qp
+            if bb_width > 0:
+                bb_pos = (last_price - bb_l_qp) / bb_width  # 0=하단, 1=상단
+                if side == "LONG"  and bb_pos > QPULSE_BB_BAND_EDGE_RATIO:
+                    return decision  # 중앙/상단 근처에서 LONG 거부
+                if side == "SHORT" and bb_pos < (1.0 - QPULSE_BB_BAND_EDGE_RATIO):
+                    return decision  # 중앙/하단 근처에서 SHORT 거부
+
+            # [v8] 필터 2: 거래량 — 15m 평균 거래량 이상일 때만 허용
+            vol_now   = tf["15m"].get("volume", 0.0)
+            vol_avg   = tf["15m"].get("vol_ma20", 0.0)
+            if vol_avg > 0 and vol_now < vol_avg * QPULSE_BB_VOL_MULT:
+                return decision  # 거래량 부족 — 신뢰도 낮음
+
+            # [v9] 필터 3: RSI 과매도/과매수 확인 — BB 역추세는 극단 RSI에서만 유효
+            rsi_now = tf["15m"].get("rsi14", 50.0)
+            if side == "LONG"  and rsi_now > QPULSE_BB_RSI_LONG_MAX:
+                return decision  # 과매도 미확인 — 롱 역추세 거부
+            if side == "SHORT" and rsi_now < QPULSE_BB_RSI_SHORT_MIN:
+                return decision  # 과매수 미확인 — 숏 역추세 거부
+
             stop_dist = QPULSE_SL_ATR_MULT * atr15
             stop_price = last_price - stop_dist if side == "LONG" else last_price + stop_dist
             pos_ratio = base_kelly * aggression_mult * 0.5 * SPLIT_ENTRY_RATIOS[0]
@@ -1989,7 +2313,7 @@ def decide_entry(
     )
 
     # === 2순위: 통계 데이터 부족 시 — 모멘텀 + 회귀 필터 ===
-    if scan["ess"] < 8:
+    if scan["ess"] < 8 and (STRATEGY_ALLOW_TREND or STRATEGY_ALLOW_RANGE):
         score = 0.0
         score += (p_up - 0.5) * 4.0
         if abs(delta_p) > 0.01:
@@ -1998,11 +2322,16 @@ def decide_entry(
             score += np.sign(accel) * 0.5
         score += sync_score * 0.3
 
-        min_score = 1.0
+        min_score = TREND_MIN_SCORE
         if abs(score) < min_score:
             return decision
 
         side = "LONG" if score > 0 else "SHORT"
+
+        # ADX 필터: 추세 진입은 ADX >= TREND_MIN_ADX 이상일 때만
+        adx_now = tf["15m"]["adx14"]
+        if not is_ranging and adx_now < TREND_MIN_ADX:
+            return decision
 
         # 방향성 필터: delta_p가 진입 방향과 너무 강하게 반대면 거부
         if side == "LONG" and delta_p < -0.03:
@@ -2026,9 +2355,15 @@ def decide_entry(
         else:
             decision.stop_price = last_price + stop_mult * atr15
 
+        target_strategy = "RANGE" if is_ranging else "TREND"
+        if target_strategy == "TREND" and not STRATEGY_ALLOW_TREND:
+            return decision
+        if target_strategy == "RANGE" and not STRATEGY_ALLOW_RANGE:
+            return decision
+
         decision.should_enter = True
         decision.side = side
-        decision.strategy = "RANGE" if is_ranging else "TREND"
+        decision.strategy = target_strategy
         decision.position_ratio = pos_ratio
         decision.confidence_tier = "low"
         decision.sync_score = sync_score
@@ -2122,11 +2457,13 @@ def decide_entry(
     else:
         decision.tp_target_pct = stop_mult * atr15 / last_price * 100 * 1.5
 
-    if is_ranging:
-        decision.strategy = "RANGE"
-    else:
-        decision.strategy = "TREND"
+    stat_strategy = "RANGE" if is_ranging else "TREND"
+    if stat_strategy == "TREND" and not STRATEGY_ALLOW_TREND:
+        return decision
+    if stat_strategy == "RANGE" and not STRATEGY_ALLOW_RANGE:
+        return decision
 
+    decision.strategy = stat_strategy
     decision.should_enter = True
     decision.side = best_side
     decision.position_ratio = pos_ratio
@@ -2206,6 +2543,26 @@ def decide_exit(
             return "회귀실패(재이탈)", 1.0
         # 나머지는 일반 청산 로직으로 폴스루
 
+    # === [v8] Q-Pulse Armed 회귀 전용 익절 ===
+    if pos.strategy == "QPULSE_REVERSION":
+        # 1차 익절: 극값→진입 거리의 50% 회복
+        if pos.exit_phase == 0 and unrealized > 0 and pos.qp_armed_tp1_price > 0:
+            if pos.side == "LONG" and last_price >= pos.qp_armed_tp1_price:
+                return "QP-Armed TP1(50%회복)", SPLIT_EXIT_RATIOS[0]
+            elif pos.side == "SHORT" and last_price <= pos.qp_armed_tp1_price:
+                return "QP-Armed TP1(50%회복)", SPLIT_EXIT_RATIOS[0]
+        # 2차 익절: 80% 회복
+        if pos.exit_phase == 1 and unrealized > 0 and pos.qp_armed_tp2_price > 0:
+            if pos.side == "LONG" and last_price >= pos.qp_armed_tp2_price:
+                return "QP-Armed TP2(80%회복)", SPLIT_EXIT_RATIOS[1]
+            elif pos.side == "SHORT" and last_price <= pos.qp_armed_tp2_price:
+                return "QP-Armed TP2(80%회복)", SPLIT_EXIT_RATIOS[1]
+        # 회귀 실패: 극값 재돌파 시 전량 손절
+        if pos.side == "LONG" and last_price < pos.qp_armed_peak_price:
+            return "QP-Armed 회귀실패(재이탈)", 1.0
+        elif pos.side == "SHORT" and last_price > pos.qp_armed_peak_price:
+            return "QP-Armed 회귀실패(재이탈)", 1.0
+
     # === [lab1 융합] Q-Pulse BB 역추세 전용 익절 ===
     if pos.strategy == "QPULSE_BB":
         # 1차 익절: BB 중심선 도달
@@ -2246,7 +2603,7 @@ def decide_exit(
                 return "시간정지(손절)", 1.0
 
     # 4. 1차 부분 익절
-    if pos.exit_phase == 0 and unrealized > 0 and pos.strategy not in ("REVERSION", "FUSION"):
+    if pos.exit_phase == 0 and unrealized > 0 and pos.strategy not in ("REVERSION", "FUSION", "QPULSE_REVERSION"):
         if has_stats:
             tp1_target = exit_profile["mfe_p40"]
         else:
@@ -2257,7 +2614,7 @@ def decide_exit(
                 return "1차익절(p40)", SPLIT_EXIT_RATIOS[0]
 
     # 5. 2차 부분 익절
-    if pos.exit_phase == 1 and unrealized > 0 and pos.strategy not in ("REVERSION", "FUSION"):
+    if pos.exit_phase == 1 and unrealized > 0 and pos.strategy not in ("REVERSION", "FUSION", "QPULSE_REVERSION"):
         should_tp2 = False
         if has_stats:
             tp2_target = exit_profile["mfe_p65"]
@@ -2285,7 +2642,7 @@ def decide_exit(
                 return "2차익절(p65)", SPLIT_EXIT_RATIOS[1]
 
     # 6. 추세 반전
-    if pos.strategy in ["TREND", "REVERSION"]:
+    if pos.strategy in ["TREND", "REVERSION", "QPULSE_REVERSION"]:
         rev_scan = stat_analyzer.scan_opportunity(
             p_up=p_up, delta_p=delta_p, accel=accel,
             sync_score=sync_score, now=now,
@@ -2362,7 +2719,8 @@ def print_status(mode, trend_word, conf_pct, phase, entry_info, tp_info, sl_pric
 
 def print_performance(perf: Performance, stat: StatAnalyzer,
                       feedback: PerformanceFeedback, reversion: MeanReversionTracker,
-                      qpulse: "QpulseSetupTracker" = None):
+                      qpulse: "QpulseSetupTracker" = None,
+                      qp_armed: "QPulseArmedReversionTracker" = None):
     dd = perf.current_drawdown_pct()
     pf = perf.profit_factor()
     sharpe = perf.sharpe_ratio()
@@ -2394,10 +2752,18 @@ def print_performance(perf: Performance, stat: StatAnalyzer,
     if qpulse is not None:
         qp_wr = qpulse.get_winrate()
         qp_wr_str = f"{qp_wr:.0f}%" if qp_wr is not None else "N/A"
-        print(f"[{fmt_time()}] [QPulse] "
+        print(f"[{fmt_time()}] [QPulse-BB] "
               f"승률={qp_wr_str}({qpulse.total_signals}건) | "
               f"PnL=${perf.qpulse_pnl:+.2f} | "
               f"상태={qpulse.get_status()}")
+    # [v8] Q-Pulse Armed 회귀 성과
+    if qp_armed is not None:
+        qa_wr = qp_armed.get_winrate()
+        qa_wr_str = f"{qa_wr:.0f}%" if qa_wr is not None else "N/A"
+        print(f"[{fmt_time()}] [QP-Armed] "
+              f"승률={qa_wr_str}({qp_armed.total}건) | "
+              f"PnL=${perf.qp_armed_rev_pnl:+.2f} | "
+              f"상태={qp_armed.get_status()}")
     print("=" * 70)
 
 
@@ -2439,7 +2805,8 @@ def main():
     momentum = MomentumTracker()
     feedback = PerformanceFeedback()
     reversion = MeanReversionTracker()
-    qpulse_tracker = QpulseSetupTracker()   # [lab1 융합]
+    qpulse_tracker = QpulseSetupTracker()         # [lab1 융합]
+    qp_armed_tracker = QPulseArmedReversionTracker()  # [v8]
     tg = TelegramBot(TELEGRAM_TOKEN, TELEGRAM_CHAT_ID)
 
     positions: List[SplitPosition] = []   # 동시 추적 포지션 목록
@@ -2555,6 +2922,15 @@ def main():
                 bb_middle=tf15["bb_middle"],
             )
 
+            # [v8] Q-Pulse 멀티TF 스코어 + Armed 회귀 신호
+            qpulse_mtf_score = calc_qpulse_multitf_score(tf)
+            qp_armed_signal = qp_armed_tracker.update(
+                qpulse_score=qpulse_mtf_score,
+                price=last_price,
+                delta_p=delta_p,
+                now=now,
+            )
+
             if last_price_15m is None:
                 delta_15m = 0.0
             else:
@@ -2575,6 +2951,8 @@ def main():
                 reversion_tracker=reversion,
                 qpulse_tracker=qpulse_tracker,
                 qpulse_signal=qpulse_signal,
+                qp_armed_tracker=qp_armed_tracker,
+                qp_armed_signal=qp_armed_signal,
                 now=now,
                 last_price=last_price, atr15=atr15, avg_atr=avg_atr, tf=tf,
                 last_exit_time=last_exit_time, last_exit_side=last_exit_side,
@@ -2602,6 +2980,10 @@ def main():
                         new_pos.reversion_tp2_price = decision.reversion_tp2_price
                     if decision.is_qpulse_bb:
                         new_pos.qpulse_bb_middle = decision.qpulse_bb_middle
+                    if decision.is_qp_armed_rev:
+                        new_pos.qp_armed_peak_price = decision.qp_armed_peak_price
+                        new_pos.qp_armed_tp1_price = decision.qp_armed_tp1_price
+                        new_pos.qp_armed_tp2_price = decision.qp_armed_tp2_price
                     new_pos.trailing.init(entry_px, decision.side, decision.stop_price, atr15)
                     positions.append(new_pos)
 
@@ -2614,6 +2996,10 @@ def main():
                               f"  TP2: {fmt_price(decision.reversion_tp2_price)}")
                     elif decision.is_qpulse_bb:
                         print(f"  TP1    : {fmt_price(decision.qpulse_bb_middle)}  (BB 중심선)")
+                    elif decision.is_qp_armed_rev:
+                        print(f"  극값   : {fmt_price(decision.qp_armed_peak_price)}"
+                              f"  TP1: {fmt_price(decision.qp_armed_tp1_price)}"
+                              f"  TP2: {fmt_price(decision.qp_armed_tp2_price)}")
                     print(f"  신뢰도 : {decision.confidence_tier}  |  이유: {decision.reason}")
                     print(f"{'='*60}\n")
 
@@ -2622,6 +3008,10 @@ def main():
                         _tp_line = f"\nTP1: {fmt_price(decision.reversion_tp1_price)}  TP2: {fmt_price(decision.reversion_tp2_price)}"
                     elif decision.is_qpulse_bb:
                         _tp_line = f"\nTP1: {fmt_price(decision.qpulse_bb_middle)} (BB중심)"
+                    elif decision.is_qp_armed_rev:
+                        _tp_line = (f"\n극값: {fmt_price(decision.qp_armed_peak_price)}"
+                                    f"  TP1: {fmt_price(decision.qp_armed_tp1_price)}"
+                                    f"  TP2: {fmt_price(decision.qp_armed_tp2_price)}")
                     if decision.side != last_alerted_side:
                         tg.send(
                             f"[진입 #{sid}] {decision.side} | {decision.strategy}\n"
@@ -2636,7 +3026,8 @@ def main():
             else:
                 if not SIGNAL_ONLY and not positions:
                     if (now - last_perf_print).total_seconds() >= 60:
-                        print_performance(perf, stat, feedback, reversion, qpulse=qpulse_tracker)
+                        print_performance(perf, stat, feedback, reversion,
+                                          qpulse=qpulse_tracker, qp_armed=qp_armed_tracker)
                         last_perf_print = now
 
             # ============================================
@@ -2646,7 +3037,7 @@ def main():
                 pos.tick(last_price)
 
                 # 분할 추가 진입 (회귀/융합 전략 제외)
-                if pos.strategy not in ("REVERSION", "FUSION") and pos.should_add_entry(last_price, delta_p):
+                if pos.strategy not in ("REVERSION", "FUSION", "QPULSE_REVERSION") and pos.should_add_entry(last_price, delta_p):
                     phase_idx = pos.entry_phase
                     if phase_idx < len(SPLIT_ENTRY_RATIOS):
                         add_ratio = SPLIT_ENTRY_RATIOS[phase_idx]
@@ -2732,6 +3123,10 @@ def main():
                         perf.qpulse_pnl += pnl
                         perf.qpulse_trades += 1
                         qpulse_tracker.record_result(pnl > 0)
+                    elif pos.strategy == "QPULSE_REVERSION":
+                        perf.qp_armed_rev_pnl += pnl
+                        perf.qp_armed_rev_trades += 1
+                        qp_armed_tracker.record_trade_result(pnl > 0)
 
                     entry_hour = pos.entry_start_time.hour if pos.entry_start_time else now.hour
                     perf.hourly_pnl[entry_hour] = perf.hourly_pnl.get(entry_hour, 0) + pnl
