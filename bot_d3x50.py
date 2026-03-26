@@ -30,7 +30,7 @@ from typing import Optional, List
 
 import numpy as np
 
-import abb_lab1_d3x50 as S
+import abb_lab1_bx50 as S
 
 # =============================================================================
 # Bitget API 인증 정보  (bitget_api_test.py 에서 확인된 키)
