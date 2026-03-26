@@ -97,7 +97,7 @@ CONFIDENCE_LEVEL = 0.95
 # 분할 진입/청산
 SPLIT_ENTRY_RATIOS = [0.4, 0.3, 0.3]
 SPLIT_ENTRY_CONFIRM_PCT = 0.1
-SPLIT_EXIT_RATIOS = [0.25, 0.25, 0.50]
+SPLIT_EXIT_RATIOS = [0.15, 0.25, 0.60]  # A+C: 1차 15%, 2차 25%, 잔여 60%
 
 # 트레일링 스탑 기본 구간
 TRAIL_ZONES_DEFAULT = [
@@ -2979,7 +2979,8 @@ def main():
                         new_pos.reversion_tp1_price = decision.reversion_tp1_price
                         new_pos.reversion_tp2_price = decision.reversion_tp2_price
                     if decision.is_qpulse_bb:
-                        new_pos.qpulse_bb_middle = decision.qpulse_bb_middle
+                        new_pos.qpulse_bb_middle = 0.0  # [풀트레일] BB 중심선 TP 비활성화 → 트레일링만으로 청산
+                        new_pos._tightened = False
                     if decision.is_qp_armed_rev:
                         new_pos.qp_armed_peak_price = decision.qp_armed_peak_price
                         new_pos.qp_armed_tp1_price = decision.qp_armed_tp1_price
@@ -3036,6 +3037,12 @@ def main():
             for pos in positions[:]:
                 pos.tick(last_price)
 
+                # [A+C] QPULSE_BB 1차 TP 후 트레일 2.5x→1.0x 타이트닝 (1회만)
+                if (pos.strategy == "QPULSE_BB" and pos.exit_phase >= 1
+                        and not getattr(pos, '_tightened', False)):
+                    pos.trailing.force_tighten(0.40)
+                    pos._tightened = True
+
                 # 분할 추가 진입 (회귀/융합 전략 제외)
                 if pos.strategy not in ("REVERSION", "FUSION", "QPULSE_REVERSION") and pos.should_add_entry(last_price, delta_p):
                     phase_idx = pos.entry_phase
@@ -3054,6 +3061,32 @@ def main():
                         if not SIGNAL_ONLY:
                             print(f"[#{pos.signal_id}] {pos.entry_phase}차 추가진입 @ {fmt_price(add_px)}")
 
+                # [풀트레일] Option D: 5m EMA 역전 시 조기청산 (exit_phase==0, 최소 15분 보유 후)
+                if pos.strategy == "QPULSE_BB" and pos.exit_phase == 0:
+                    hold_secs = ((now - pos.entry_start_time).total_seconds()
+                                 if pos.entry_start_time else 0)
+                    if hold_secs >= 15 * 60:
+                        ema19_5m = tf["5m"].get("ema19", 0.0)
+                        ema40_5m = tf["5m"].get("ema40", 0.0)
+                        ema_against = (
+                            (pos.side == "LONG"  and ema19_5m > 0 and ema19_5m < ema40_5m) or
+                            (pos.side == "SHORT" and ema19_5m > 0 and ema19_5m > ema40_5m)
+                        )
+                        if ema_against:
+                            ex_px = apply_slippage(last_price, pos.side, is_entry=False)
+                            ex_qty = pos.remaining_qty
+                            ex_fees = fee(ex_qty * ex_px)
+                            perf.balance -= ex_fees
+                            pnl_d = pos.partial_exit(ex_qty, ex_px, ex_fees)
+                            perf.balance += pnl_d
+                            perf.realized_pnl += pnl_d
+                            perf.update_peak()
+                            positions.remove(pos)
+                            if not SIGNAL_ONLY:
+                                print(f"[#{pos.signal_id}] 5mEMA역전조기청산 "
+                                      f"PnL={pnl_d:+.2f}")
+                            continue
+
                 # 청산 판단
                 exit_reason, exit_ratio = decide_exit(
                     pos=pos, p_up=p_up, delta_p=delta_p,
@@ -3062,6 +3095,11 @@ def main():
                     is_ranging=is_ranging, range_signal=range_signal,
                     stat_analyzer=stat, now=now, atr15=atr15,
                 )
+
+                # [풀트레일] 부분익절 스킵 — 트레일링 스탑으로만 청산
+                if (pos.strategy == "QPULSE_BB" and exit_reason is not None
+                        and "익절" in exit_reason and exit_ratio < 0.99):
+                    exit_reason = None
 
                 unrealized = pos.unrealized_pnl_pct(last_price)
                 trail_stop = pos.trailing.current_stop
