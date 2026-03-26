@@ -58,8 +58,9 @@ TICK_SIZE = {"BTCUSDT": 0.1, "ETHUSDT": 0.01, "XRPUSDT": 0.0001}
 # 심볼별 가격 소수점 자리
 PRICE_DEC = {"BTCUSDT": 1,   "ETHUSDT": 2,    "XRPUSDT": 4}
 
-REFRESH_SEC = 20
-MAX_RETRIES = 5
+REFRESH_SEC      = 30    # 심볼당 순환 주기 (초) — rate limit 여유
+MAX_RETRIES      = 5
+RATE_LIMIT_SLEEP = 8     # rate limit 에러 시 대기 (초)
 
 
 # =============================================================================
@@ -386,11 +387,30 @@ def process_symbol(sym: BotSymbolState, trader: BitgetTrader,
         if cache_ok:
             tf[name] = sym.tf_cache[name]
         else:
-            df = S.fetch_klines(sym.symbol, interval, S.CANDLES_LIMIT, S.CATEGORY)
-            tf[name] = S.classify_trend(df)
-            sym.tf_cache[name] = tf[name]
-            sym.last_fetch_time[name] = now
-            time.sleep(0.15)
+            # rate limit 에러 시 자동 재시도
+            for attempt in range(3):
+                try:
+                    df = S.fetch_klines(sym.symbol, interval, S.CANDLES_LIMIT, S.CATEGORY)
+                    tf[name] = S.classify_trend(df)
+                    sym.tf_cache[name] = tf[name]
+                    sym.last_fetch_time[name] = now
+                    break
+                except Exception as e:
+                    err = str(e)
+                    if "10006" in err or "Rate Limit" in err or "rate limit" in err:
+                        wait = RATE_LIMIT_SLEEP * (attempt + 1)
+                        print(f"  [{sym.symbol}/{name}] rate limit → {wait}s 대기 후 재시도")
+                        time.sleep(wait)
+                    else:
+                        raise
+            else:
+                # 3회 실패 시 캐시 유지하고 계속
+                if name in sym.tf_cache:
+                    tf[name] = sym.tf_cache[name]
+                    print(f"  [{sym.symbol}/{name}] fetch 실패 — 캐시 사용")
+                else:
+                    raise RuntimeError(f"{sym.symbol}/{name} 데이터 fetch 완전 실패")
+            time.sleep(0.4)   # TF 간 딜레이 (0.15 → 0.4)
 
     base   = S.combine_timeframes(tf)
     p_up   = sym.cal.calibrate(base["p_up_base"])
@@ -464,11 +484,16 @@ def process_symbol(sym: BotSymbolState, trader: BitgetTrader,
         if exit_reason:
             _execute_exit(sym, pos, trader, gs, tg, last_price, exit_reason, now)
 
-    # ── 거래소 포지션 동기화 (손절이 거래소에서 먼저 터진 경우 감지) ──
+    # ── 거래소 포지션 동기화 (수동청산 / 손절 자동체결 감지) ──────────
     if sym.positions:
         exch_pos = trader.get_position(sym.symbol)
         if exch_pos is None:
-            # 거래소엔 포지션 없음 → 손절 자동 체결된 것
+            # 거래소에 포지션 없음 → 수동청산 또는 손절 자동체결
+            # 남아있는 stop-loss 주문 먼저 취소 (안 지우면 역방향 주문 실행됨)
+            if sym.plan_order_id:
+                trader.cancel_stop_loss(sym.symbol, sym.plan_order_id)
+                sym.plan_order_id = None
+
             for pos in sym.positions[:]:
                 mark = trader.get_mark_price(sym.symbol) or last_price
                 pnl  = pos.partial_exit(pos.remaining_qty, mark, 0)
@@ -481,8 +506,8 @@ def process_symbol(sym: BotSymbolState, trader: BitgetTrader,
                 sym.positions.remove(pos)
                 sym.last_exit_time = now; sym.last_exit_side = pos.side
                 gs.remove(sym.symbol)
-                sym.plan_order_id = None
-                _fmt(sym.symbol, pos.side, mark, 0, 0, pnl, "거래소손절자동체결", tg)
+                sym.live_qty = 0.0
+                _fmt(sym.symbol, pos.side, mark, 0, 0, pnl, "외부청산감지(수동/손절)", tg)
 
     # ── 진입 판단 ─────────────────────────────────────────────
     if sym.positions:
@@ -660,7 +685,7 @@ def main():
 
             for sym in states:
                 process_symbol(sym, trader, gs, tg, now)
-                time.sleep(0.3)   # 심볼 간 API 호출 간격
+                time.sleep(1.5)   # 심볼 간 API 호출 간격
 
             # 상태 출력 (1분마다)
             if int(now.timestamp()) % 60 < REFRESH_SEC:
