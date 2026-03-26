@@ -219,7 +219,7 @@ QPULSE_MIN_TRADES = 5        # 승률 계산 최소 거래 수
 
 # [v8] QP-BB 진입 필터
 QPULSE_BB_BAND_EDGE_RATIO = 0.50  # BB 밴드 외곽 50% 영역에서만 진입 (D4c)
-QPULSE_BB_VOL_MULT        = 0.85  # 진입 시 거래량이 20봉 평균의 0.85배 이상이어야 함 (D4c)
+QPULSE_BB_VOL_MULT        = 0.70  # 진입 시 거래량이 20봉 평균의 0.70배 이상이어야 함 (D4c→A완화)
 QPULSE_BB_RSI_LONG_MAX    = 38    # QPULSE_BB LONG 진입 최대 RSI (최적화: 42→38→36)
 QPULSE_BB_RSI_SHORT_MIN   = 63    # QPULSE_BB SHORT 진입 최소 RSI (최적화: 58→65)
 

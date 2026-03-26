@@ -31,6 +31,7 @@ from typing import Optional, List
 import numpy as np
 
 import abb_lab1_bx50 as S
+from telegram_commander import TelegramCommander
 
 # =============================================================================
 # Bitget API 인증 정보  (bitget_api_test.py 에서 확인된 키)
@@ -297,6 +298,8 @@ class BitgetTrader:
 class GlobalState:
     def __init__(self):
         self.active: set = set()   # 현재 포지션 보유 중인 심볼
+        self.start_time: datetime = datetime.now(timezone.utc)
+        self.session_trades: list = []
 
     def count(self) -> int:
         return len(self.active)
@@ -507,6 +510,11 @@ def process_symbol(sym: BotSymbolState, trader: BitgetTrader,
                 sym.last_exit_time = now; sym.last_exit_side = pos.side
                 gs.remove(sym.symbol)
                 sym.live_qty = 0.0
+                gs.session_trades.append({
+                    "time": now, "symbol": sym.symbol, "side": pos.side,
+                    "entry_price": pos.avg_entry_price, "exit_price": mark,
+                    "pnl": pnl, "reason": "외부청산감지(수동/손절)",
+                })
                 _fmt(sym.symbol, pos.side, mark, 0, 0, pnl, "외부청산감지(수동/손절)", tg)
 
     # ── 진입 판단 ─────────────────────────────────────────────
@@ -612,6 +620,11 @@ def _execute_exit(sym: BotSymbolState, pos: S.SplitPosition,
     sym.last_exit_side = pos.side
     sym.live_qty = 0.0
     gs.remove(sym.symbol)
+    gs.session_trades.append({
+        "time": now, "symbol": sym.symbol, "side": pos.side,
+        "entry_price": pos.avg_entry_price, "exit_price": exit_price,
+        "pnl": pnl, "reason": reason,
+    })
 
     _fmt(sym.symbol, pos.side, exit_price, 0, 0, pnl, reason, tg)
 
@@ -654,10 +667,10 @@ def main():
     print(f"  갱신주기: {REFRESH_SEC}초")
     print("=" * 65)
 
-    tg     = S.TelegramBot(S.TELEGRAM_TOKEN, S.TELEGRAM_CHAT_ID)
     trader = BitgetTrader()
     gs     = GlobalState()
     states = [BotSymbolState(symbol=s) for s in SYMBOLS]
+    tg     = TelegramCommander(S.TELEGRAM_TOKEN, S.TELEGRAM_CHAT_ID, gs, states, MAX_GLOBAL_POS)
 
     # 심볼별 레버리지 초기 설정
     for sym in states:
