@@ -46,18 +46,18 @@ MARGIN_COIN       = "USDT"
 # =============================================================================
 # 봇 설정
 # =============================================================================
-SYMBOLS        = ["BTCUSDT", "ETHUSDT", "XRPUSDT"]
+SYMBOLS        = ["BTCUSDT", "ETHUSDT", "XRPUSDT", "SOLUSDT"]
 TARGET_LEVERAGE = 50
 MAX_GLOBAL_POS  = 2       # 전체 심볼 합산 최대 동시 포지션
 POS_RATIO       = 0.50    # 신호당 가용잔고 비율 (50%)
 DRY_RUN         = False   # True = 주문 실행 안 함 (테스트 모드)
 
 # 심볼별 수량 소수점 자리 (Bitget 최소 주문 단위 기준)
-QTY_DEC   = {"BTCUSDT": 3,   "ETHUSDT": 2,    "XRPUSDT": 0}
+QTY_DEC   = {"BTCUSDT": 3,   "ETHUSDT": 2,    "XRPUSDT": 0,      "SOLUSDT": 1}
 # 심볼별 가격 틱 사이즈 (5틱 지정가 진입용)
-TICK_SIZE = {"BTCUSDT": 0.1, "ETHUSDT": 0.01, "XRPUSDT": 0.0001}
+TICK_SIZE = {"BTCUSDT": 0.1, "ETHUSDT": 0.01, "XRPUSDT": 0.0001, "SOLUSDT": 0.01}
 # 심볼별 가격 소수점 자리
-PRICE_DEC = {"BTCUSDT": 1,   "ETHUSDT": 2,    "XRPUSDT": 4}
+PRICE_DEC = {"BTCUSDT": 1,   "ETHUSDT": 2,    "XRPUSDT": 4,      "SOLUSDT": 2}
 
 REFRESH_SEC      = 30    # 심볼당 순환 주기 (초) — rate limit 여유
 MAX_RETRIES      = 5
@@ -157,6 +157,7 @@ class BitgetTrader:
             "symbol":      symbol,
             "productType": PRODUCT_TYPE,
             "marginCoin":  MARGIN_COIN,
+            "marginMode":  "isolated",
             "size":        str(size),
             "side":        bitget_side,
             "tradeSide":   "open",
@@ -241,28 +242,25 @@ class BitgetTrader:
     # ── 청산 주문 ─────────────────────────────────────────────
     def close_position(self, symbol: str, side: str, qty: float) -> bool:
         """시장가 청산. side = 보유 포지션 방향 (LONG/SHORT)"""
-        close_side = "sell" if side == "LONG" else "buy"
-        dec = QTY_DEC.get(symbol, 3)
-        size = round(qty, dec)
+        hold_side = side.lower()   # "long" or "short"
 
         if DRY_RUN:
-            print(f"  [DRY] {symbol} {side} {size} 청산")
+            print(f"  [DRY] {symbol} {side} 청산")
             return True
 
-        r = self._post("/api/v2/mix/order/place-order", {
+        r = self._post("/api/v2/mix/order/close-positions", {
             "symbol":      symbol,
             "productType": PRODUCT_TYPE,
-            "marginCoin":  MARGIN_COIN,
-            "size":        str(size),
-            "side":        close_side,
-            "tradeSide":   "close",
-            "orderType":   "market",
-            "force":       "gtc",
+            "holdSide":    hold_side,
         })
-        ok = r.get("code") == "00000"
-        if not ok:
+        if r.get("code") != "00000":
             print(f"  ❌ {symbol} 청산 실패: {r.get('msg')}")
-        return ok
+            return False
+        failures = r.get("data", {}).get("failureList", [])
+        if failures:
+            print(f"  ❌ {symbol} 청산 실패: {failures[0].get('errorMsg')}")
+            return False
+        return True
 
     # ── 포지션 조회 ───────────────────────────────────────────
     def get_position(self, symbol: str) -> Optional[dict]:
